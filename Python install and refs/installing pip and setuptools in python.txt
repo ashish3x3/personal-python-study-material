@@ -1,0 +1,14 @@
+1.downlaod and save get-pip.py from https://bootstrap.pypa.io/get-pip.py in c>python27
+2. run python get-pip.py from cmd as admin
+3. save c:\python27\lib\site-packages & C:\Python27\Scripts in system env path .. 
+c:\python27\lib\site-packages is not required as it will run otherwise too.
+4. now reopen cmd and us epip install numpy/anypackage
+
+always use pip outside of python console. It will not work inisde python console.
+
+
+
+installing ez_setup.py
+1. downlaod from https://bootstrap.pypa.io/ez_setup.py and save it in c>python27
+2.got to c>pyhton run python ez_setup.py as admin in cmd
+3. good to go

@@ -1,0 +1,4 @@
+1. goto https://eternallybored.org/misc/wget/ and get the 64 bit binary
+2. extract in c drive
+3. save the path C:\wget-1.18-win64 to syatem env path
+4. use wget https://abc.com

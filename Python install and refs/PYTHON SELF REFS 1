@@ -1,0 +1,379 @@
+
+
+
+
+pandas iloc vs ix vs loc explanation?: 
+
+http://stackoverflow.com/questions/31593201/pandas-iloc-vs-ix-vs-loc-explanation
+
+loc works on labels in the index.
+iloc works on the positions in the index (so it only takes integers).
+ix usually tries to behave like loc but falls back to behaving like iloc if the label is not in the index.
+
+
+
+Warning One has to be mindful that in python (and numpy), the nan's don’t compare equal, but None's do. Note that Pandas/numpy uses the fact that np.nan != np.nan, and treats None like np.nan.
+In [11]: None == None
+Out[11]: True
+
+In [12]: np.nan == np.nan
+Out[12]: False
+So as compared to above, a scalar equality comparison versus a None/np.nan doesn’t provide useful information.
+
+In [13]: df2['one'] == np.nan
+Out[13]: 
+a    False
+b    False
+c    False
+d    False
+e    False
+f    False
+g    False
+h    False
+Name: one, dtype: bool
+
+
+
+
+Limit the amount of filling
+
+If we only want consecutive gaps filled up to a certain number of data points, we can use the limit keyword:
+
+In [41]: df
+Out[41]: 
+   one       two     three
+a  NaN -0.282863 -1.509059
+c  NaN  1.212112 -0.173215
+e  NaN       NaN       NaN
+f  NaN       NaN       NaN
+h  NaN -0.706771 -1.039575
+
+In [42]: df.fillna(method='pad', limit=1)
+Out[42]: 
+   one       two     three
+a  NaN -0.282863 -1.509059
+c  NaN  1.212112 -0.173215
+e  NaN  1.212112 -0.173215
+f  NaN       NaN       NaN
+h  NaN -0.706771 -1.039575
+To remind you, these are the available filling methods:
+
+Method	Action
+pad / ffill	Fill values forward
+bfill / backfill	Fill values backward
+With time series data, using pad/ffill is extremely common so that the “last known value” is available at every time point.
+
+The ffill() function is equivalent to fillna(method='ffill') and bfill() is equivalent to fillna(method='bfill')
+
+
+
+
+Use pandas.DataFrame.reset_index(), the option drop=True will do what you are looking for.
+
+In [14]: df = pd.DataFrame(np.random.randn(5,4))
+
+In [15]: df.ix[::3] = np.nan
+
+In [16]: df
+Out[16]:
+          0         1         2         3
+0       NaN       NaN       NaN       NaN
+1  1.895803  0.532464  1.879883 -1.802606
+2  0.078928  0.053323  0.672579 -1.188414
+3       NaN       NaN       NaN       NaN
+4 -0.766554 -0.419646 -0.606505 -0.162188
+
+In [17]: df = df.dropna()
+
+In [18]: df.reset_index(drop=True)
+Out[18]:
+          0         1         2         3
+0  1.895803  0.532464  1.879883 -1.802606
+1  0.078928  0.053323  0.672579 -1.188414
+2 -0.766554 -0.419646 -0.606505 -0.162188
+
+
+
+
+I've found that the easiest way is to reset the index, drop the NaNs, and then reset the index again.
+
+http://stackoverflow.com/questions/19670904/trying-to-drop-nan-indexed-row-in-dataframe
+
+In [26]: dfA.reset_index()
+Out[26]: 
+  index special_name
+0   NaN        Apple
+1   OMG       Banana
+
+In [30]: df = dfA.reset_index().dropna().set_index('index')
+
+In [31]: df
+Out[31]: 
+      special_name
+index             
+OMG         Banana
+
+
+None of the answers worked 100% for me. Here's what worked:
+
+In [26]: print df
+Out[26]:            
+          site_id      special_name
+0         OMG          Apple
+1         NaN          Banana
+2         RLY          Orange
+
+
+In [27]: df.dropna(inplace=True)
+Out[27]:            
+          site_id      special_name
+0         OMG          Apple
+2         RLY          Orange
+
+In [28]: df.reset_index(inplace=True)
+Out[28]:            
+          index     site_id      special_name
+0         0         OMG          Apple
+1         2         RLY          Orange
+
+In [29]: df.drop('index', axis='columns', inplace=True)
+Out[29]:             
+          site_id      special_name
+0         OMG          Apple
+1         RLY          Orange
+
+
+
+toTest = [[34, 78, 8,  1726, 150, 413,  0.363, 63,  163, 0.386503067, 87,  250, 0.348,       0.439, 40,  52,  0.769, 20, 143, 163, 147, 47, 19, 54, 124],
+          [35, 80, 80, 2628, 633, 1273, 0.497, 131, 329, 0.398176292, 502, 944, 0.531779661, 0.549, 338, 376, 0.899, 40, 458, 498, 216, 73, 45, 117, 165]
+        ] # 403 1735
+predictionsRealTime = knn.predict(toTest)
+print 'predictionsRealTime ',predictionsRealTime
+
+
+
+Python: Maximum of lists of 2 or more elements in a tuple using key
+operator.itemgetter()
+http://stackoverflow.com/questions/17504681/python-maximum-of-lists-of-2-or-more-elements-in-a-tuple-using-key
+
+
+
+ dict.items() and dict.iteritems()?
+
+http://stackoverflow.com/questions/10458437/what-is-the-difference-between-dict-items-and-dict-iteritems
+
+http://stackoverflow.com/questions/30223099/using-iteritems-to-iterate-over-key-value-in-python-dictionary
+
+that is just what operator.itemgetter(1) will give you: A function that grabs the first item from a list-like object.
+
+
+
+http://stackoverflow.com/questions/12453580/concatenate-item-in-list-to-strings
+>>> sentence = ['this','is','a','sentence']
+>>> '-'.join(sentence)
+'this-is-a-sentence'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

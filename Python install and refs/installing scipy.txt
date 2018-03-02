@@ -1,0 +1,24 @@
+cannot download directly..
+so go to unofficial site http://www.lfd.uci.edu/~gohlke/pythonlibs/#scipy
+
+download numpy-1.11.2rc1+mkl-cp27-cp27m-win32.whl and scipy-0.18.1-cp27-cp27m-win32.whl
+
+numpp+mkl bcz skipy needs it for its dependency. so first install numpy then skipy
+
+NOTE: have saved a copy of both of these file in this folder too
+
+downlaod this file locally
+store it in c:\>python27
+
+run :
+pip install C:\Python27\numpy-1.11.2rc1+mkl-cp27-cp27m-win32.whl 
+Successfully installed numpy-1.11.2rc1+mkl
+
+then
+
+pip install C:\Python27\scipy-0.18.1-cp27-cp27m-win32.whl
+Successfully installed scipy-0.18.1
+
+cp27 tells its for python2.7 so dont download any .whl with cp33 as that will be for python3.x etc
+
+also amd64 tells if U r running 64 bit python version...in most cases amd32 wil work like above numpy,scipy example. so download 32 version amd only

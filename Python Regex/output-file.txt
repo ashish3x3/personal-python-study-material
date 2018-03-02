@@ -1,0 +1,12 @@
+Old File Name :-C:\Originate Object Difference Code\Genesis-Vela_Main-v_2.3005_Tag\Genesis-Main-v_2.3005_Tag\src\objects\clcommon__CL_Product__c.object
+<customSettingsVisibility>Public</customSettingsVisibility>
+<customSettingsVisibility>Public</customSettingsVisibility>
+<customSettingsVisibility>Public</customSettingsVisibility>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+<customSettingsVisibility>Public</customSettingsVisibility>
+Old File Name :-C:\Originate Object Difference Code\Genesis-Vela_Main-v_2.3005_Tag\Genesis-Main-v_2.3005_Tag\src\objects\clcommon__CL_Product__c.object
+<customSettingsVisibility>Public</customSettingsVisibility>
+<customSettingsVisibility>Public</customSettingsVisibility>
+<customSettingsVisibility>Public</customSettingsVisibility>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+<customSettingsVisibility>Public</customSettingsVisibility>

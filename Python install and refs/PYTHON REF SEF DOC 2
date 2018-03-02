@@ -1,0 +1,67 @@
+
+
+Additionally, pip will already be installed if you're working in a Virtual Environment created by virtualenv or pyvenv.
+
+http://stackoverflow.com/questions/27792008/python-create-recursive-folder-structure
+
+import os
+import shutil
+
+os.chdir('c:/')
+if not os.path.exists('c:/pythontest'):
+    os.mkdir('c:/pythontest')
+else:
+    shutil.rmtree('c:/pythontest')
+    os.mkdir('c:\pythontest')
+
+os.chdir('c:/pythontest')
+
+try:
+        file = open(name,'r+')   # Trying to create a new file or open one
+        file.close()
+
+    except:
+        print('Something went wrong! Can\'t tell what?')
+        sys.exit(0) # quit Python
+
+If the file does not exists, open(name,'r+') will fail.
+
+You can use open(name, 'w'), which creates the file if the file does not exist, but it will truncate the existing file.
+
+Alternatively, you can use open(name, 'a'); this will create the file if the file does not exist, but will not truncate the existing file.
+
+
+def create():
+    print("creating new  file")
+    name=raw_input ("enter the name of file:")
+    extension=raw_input ("enter extension of file:")
+    try:
+        name=name+"."+extension
+        file=open(name,'a')
+
+        file.close()
+    except:
+            print("error occured")
+            sys.exit(0)
+
+
+
+how to provide default text to newly created json file in python
+
+package.json
+webpack.config.js
+
+npm install -S anything should go in package.json : test
+npm install should automatically istall package,json
+npm run dev should run the webpack.config.js internally to create bundle
+
+
+
+
+
+first = second = sys.maxint
+for i in range(0, arr_size):
+if (second == sys.maxint):
+
+print 'The smallest element is',first,'and' \
+              ' second smallest element is',second

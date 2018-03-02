@@ -1,0 +1,1003 @@
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+Representing Regular Expressions in Python
+
+
+r"^a.*\.html$" 
+
+The regular example of our previous example matches all file names (strings) which start with an "a" and end with ".html". 
+
+We will explain in the further sections the structure of the example above in detail. 
+
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+Syntax of Regular Expressions
+
+
+r"cat" is a regular expression, though a very simple one without any metacharacters. 
+
+Our RE r"cat" matches for example the following string: "A cat and a rat can't be friends."
+
+If we match "cats" in a string that might be still okay, but what about all those words containing this character sequence "cat"? We match words like "education", "communicate", "falsification", "ramifications", "cattle" and many more. 
+
+This is a case of "over matching", i.e. we receive positive results, which are wrong according to the problem we want to solve. 
+
+If we try to fix the previous RE, so that it doesn't create over matching, we might try the expression r" cat ". 
+
+These blanks prevent the matching of the above mentioned words like "education", "falsification" and "ramification", but we fall prey to another mistake. 
+
+What about the string "The cat, called Oscar, climbed on the roof."? The problem is that we don't expect a comma but only a blank behind the word "cat". 
+
+
+Before we go on with the description of the syntax of regular expressions, we want to explain how to use them in Python:
+>>> import re
+>>> x = re.search("cat","A cat and a rat can't be friends.")
+>>> print x
+<_sre.SRE_Match object at 0x7fd4bf238238>
+>>> x = re.search("cow","A cat and a rat can't be friends.")
+>>> print x
+None
+
+
+This is most probably the most important and the most often used method of this module. re.search(expr,s) checks a string s for an occurrence of a substring which matches the regular expression expr.
+
+ The first substring (from left), which satisfies this condition will be returned. 
+
+ If a match has been possible, we get a so-called match object as a result, otherwise the value None. 
+
+ This method is already enough to use regular expressions in Python programs:
+
+
+>>> if re.search("cat","A cat and a rat can't be friends."):
+...     print "Some kind of cat has been found :-)"
+... else:
+...     print "No cat has been found :-("
+... 
+Some kind of cat has been found :-)
+>>> if re.search("cow","A cat and a rat can't be friends."):
+...     print "Cats and Rats and a cow."
+... else:
+...     print "No cow around."
+... 
+No cow around.
+
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+
+Any Character
+
+Let's assume that we have not been interested in the previous example to recognize the word cat, but all three letter words, which end with "at". 
+
+The syntax of regular expressions supplies a metacharacter ".", which is used like a placeholder for "any character". 
+
+The regular expression of our example can be written like this: 
+r" .at " 
+
+This RE matches three letter words, isolated by blanks, which end in "at". Now we get words like "rat", "cat", "bat", "eat", "sat" and many others. 
+
+But what, if the text contains "words" like "@at" or "3at"? These words match as well and this means that we have created over matching again. We will learn a solution in the following section:
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+
+
+Character Classes
+
+Square brackets, "[" and "]", are used to include a character class. [xyz] means e.g. either an "x", an "y" or a "z". 
+Let's look at a more practical example:
+
+r"M[ae][iy]er"
+
+This is a regular expression, which matches a surname which is quite common in German. A name with the same pronunciation and four different spellings: Maier, Mayer, Meier, Meyer 
+
+Instead of a choice between two characters, we often need a choice between larger character classes. We might need e.g. a class of letters between "a" and "e" or between "0" and "5"
+
+
+To manage such such character classes the syntax of regular expressions supplies a metacharacter "-". 
+
+[a-e] a simplified writing for [abcde] or [0-5] denotes [012345]. 
+[ABCDEFGHIJKLMNOPQRSTUVWXYZ] we can write [A-Z]. 
+"any lower case or uppercase letter" [A-Za-z]
+
+So the expression [-az ] is only the choice between the three characters "-", "a" and "z", but no other characters. The same is true for [az-]. 
+
+Exercise:
+What character class is described by [-a-z]? 
+
+Answer The character "-" and all the characters "a", "b", "c" all the way up to "z". 
+
+
+The only other special character inside square brackets (character class choice) is the caret "^". If it is used directly after an opening square bracket, it negates the choice. [^0-9] denotes the choice "any character but a digit". 
+
+The position of the caret within the square brackets is crucial. If it is not positioned as the first character following the opening square bracket, it has no special meaning. 
+
+[^abc] means anything but an "a", "b" or "c" 
+[a^bc] means an "a", "b", "c" or "^"
+
+
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+
+
+A Practical Exercise in Python
+
+
+There are some people with the surname Neu. We are looking for a Neu, but we don't know the first name, we just know that it starts with a J.
+
+import re
+
+fh = open("simpsons_phone_book.txt")
+for line in fh:
+    if re.search(r"J.*Neu",line):
+        print line.rstrip()
+fh.close()
+
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+Predefined Character Classes
+
+
+These are all lower case and uppercase characters plus all the digits and the underscore, corresponding to the following regular expression: 
+
+r"[a-zA-Z0-9_]" 
+
+
+The special sequences consist of "\\" and a character from the following list:
+\d	Matches any decimal digit; equivalent to the set [0-9].
+\D	The complement of \d. It matches any non-digit character; equivalent to the set [^0-9].
+\s	Matches any whitespace character; equivalent to [ \t\n\r\f\v].
+\S	The complement of \s. It matches any non-whitespace character; equiv. to [^ \t\n\r\f\v].
+\w	Matches any alphanumeric character; equivalent to [a-zA-Z0-9_]. With LOCALE, it will match the set [a-zA-Z0-9_] plus characters defined as letters for the current locale.
+\W	Matches the complement of \w.
+\b	Matches the empty string, but only at the start or end of a word.
+\B	Matches the empty string, but not at the start or end of a word.
+\\	Matches a literal backslash.
+
+The \b and \B of the previous overview of special sequences, is often not properly understood or even misunderstood especially by novices. 
+
+While the other sequences match characters, - e.g. \w matches characters like "a", "b", "m", "3" and so on, - \b and \B don't match a character. 
+
+They match empty strings depending on their neighbourhood, i.e. what kind of a character the predecessor and the successor is. 
+
+So \b matches any empty string between a \W and a \w character and also between a \w and a \W character. \B is the complement, i.e empty strings between \W and \W or empty strings between \w and \w. 
+
+We illustrate this in the following example: 
+
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+Matching Beginning and End
+
+INFO : caret ^, $, re.search(), re.match(), re.MULTILINE/re.M, 
+
+re.match(r"^M[ae][iy]er", s, re.M)
+
+But what, if we want to match a regular expression at the beginning of a string and only at the beginning? 
+
+The re module of Python provides two functions to match regular expressions. 
+
+We have met already one of them, i.e. search(). The other has in our opinion a misleading name: match() 
+
+import re ans RE
+RE.search(). 
+RE.match(re_str, s) : checks for a match of re_str merely at the beginning of the string. 
+
+Misleading, because match(re_str, s) checks for a match of re_str merely at the beginning of the string. 
+
+match() is the solution to our question
+
+
+>>> import re
+>>> s1 = "Mayer is a very common Name"
+>>> s2 = "He is called Meyer but he isn't German."
+>>> print re.search(r"M[ae][iy]er", s1)
+<_sre.SRE_Match object at 0x7fc59c5f26b0>
+>>> print re.search(r"M[ae][iy]er", s2)
+<_sre.SRE_Match object at 0x7fc59c5f26b0>
+>>> print re.match(r"M[ae][iy]er", s1)
+<_sre.SRE_Match object at 0x7fc59c5f26b0>
+>>> print re.match(r"M[ae][iy]er", s2)
+None
+>>> 
+
+
+So, this is a way to match the start of a string, but it's a Python specific method, i.e. it can't be used in other languages like Perl, AWK and so on. 
+
+There is a general solution which is a standard for regular expressions: 
+
+The caret '^' Matches the start of the string, and in MULTILINE (will be explained further down) mode also matches immediately after each newline, which the Python method match() doesn't do. 
+
+The caret has to be the first character of a regular expression:
+
+>>> import re
+>>> s1 = "Mayer is a very common Name"
+>>> s2 = "He is called Meyer but he isn't German."
+>>> print re.search(r"^M[ae][iy]er", s1)
+<_sre.SRE_Match object at 0x7fc59c5f26b0>
+>>> print re.search(r"^M[ae][iy]er", s2)
+None
+
+
+But what happens if we concatenate the two strings s1 and s2 in the following way:
+s = s2 + "\n" + s1
+Now the string doesn't start with a Maier of any kind, but the name is following a newline character:
+>>> s = s2 + "\n" + s1
+>>> print re.search(r"^M[ae][iy]er", s)
+None
+>>> 
+
+
+The name hasn't been found, because only the beginning of the string is checked. It changes, if we use the multiline mode, which can be activated by adding the following third parameters to search:
+
+>>> print re.search(r"^M[ae][iy]er", s, re.MULTILINE)
+<_sre.SRE_Match object at 0x7fc59c5f26b0>
+>>> print re.search(r"^M[ae][iy]er", s, re.M)
+<_sre.SRE_Match object at 0x7fc59c5f26b0>
+>>> print re.match(r"^M[ae][iy]er", s, re.M)
+None
+>>> 
+
+
+The previous example also shows that the multiline mode doesn't affect the match method. match() never checks anything but the beginning of the string for a match. 
+
+
+We have learnt how to match the beginning of a string. What about the end? Of course that's possible to. 
+
+The dollar sign ""isusedasametacharacterforthispurpose.′"isusedasametacharacterforthispurpose.′' matches the end of a string or just before the newline at the end of the string. 
+
+If in MULTILINE mode, it also matches before a newline. We demonstrate the usage of the "$" character in the following example:
+
+
+>>> print re.search(r"Python\.$","I like Python.")
+<_sre.SRE_Match object at 0x7fc59c5f26b0>
+>>> print re.search(r"Python\.$","I like Python and Perl.")
+None
+>>> print re.search(r"Python\.$","I like Python.\nSome prefer Java or Perl.")
+None   // bcz of no  multilline
+>>> print re.search(r"Python\.$","I like Python.\nSome prefer Java or Perl.", re.M)    // bcz of multilline
+<_sre.SRE_Match object at 0x7fc59c5f26b0>
+>>> 
+
+
+
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+
+Optional Items
+
+? :  A question mark declares that the preceding character or expression is optional. 
+(ruary)? :  subexpression is grouped by round brackets and a question mark following such a group means that this group may or may not exist. 
+
+
+The final Mayer-Recognizer looks now like this: 
+
+r"M[ae][iy]e?r"
+
+
+A subexpression is grouped by round brackets and a question mark following such a group means that this group may or may not exist.
+
+ With the following expression we can match dates like "Feb 2011" or February 2011":
+
+r"Feb(ruary)? 2011"
+
+
+
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+Quantifiers
+
+?          : A character or a subexpression is "repeated" not at all or exactly one time.
+*          : A star following a character or a subexpression means that this expression or character may be repeated arbitrarily, even zero times. r"[0-9]*"
++          :  except that the character or subexpression followed by a "+" sign has to be repeated at least one time
+{from, to} : this means that the expression has to appear at least "from" times and not more than "to" times. {, to} is an abbreviated spelling for {0,to} and {from,} is an abbreviation for 	
+				"at least from times but no upper limit"
+
+
+If you just use, what we have introduced so far, you will still need a lot of things. Above all some way of repeating characters or regular expressions.
+
+We have already encountered one kind of repetition, i.e. the question mark. 
+
+A character or a subexpression is "repeated" not at all or exactly on time.
+
+We have also used previously another quantifier without explaining it. 
+
+It is the asterisk or star character. A star following a character or a subexpression means that this expression or character may be repeated arbitrarily, even zero times.
+
+r"[0-9]*"
+
+The above expression matches any sequence of digits, even the empty string. r".*" matches any sequence of characters and the empty string. 
+
+
+Write a regular expression which matches strings which starts with a sequence of digits - at least one digit - followed by a blank and after this arbitrary characters. 
+
+Solution:
+r"^[0-9][0-9] .*"
+r"^[0-9]+ .*"
+
+
+Let's assume you want to recognize the last lines of addresses on envelopes in Switzerland. 
+
+These lines usually contain a four digits long post code followed by a blank and a city name. 
+
+Using + or * are too unspecific for our purpose and the following expression seems to be too clumsy:
+
+r"^[0-9][0-9][0-9][0-9] [A-Za-z]+"
+
+
+Now we want to improve our regular expression. 
+
+Let's assume that there is no city name in Switzerland, which consists of less than 3 letters, at least 3 letters.
+
+We can denote this by [A-Za-z]{3,}.
+
+Now we have to recognize lines with German post code (5 digits) lines as well, i.e. the post code can now consist of either four or five digits:
+
+
+r"^[0-9]{4,5} [A-Z][a-z]{2,}"
+
+
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+Grouping
+
+We can group a part of a regular expression by surrounding it with parenthesis (round brackets). This way we can apply operators to the complete group instead of a single character.
+
+
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+Capturing Groups and Backreferences
+
+
+Parenthesis (round brackets) not only group subexpressions but they create backreferences as well. 
+
+The part of the string matched by the grouped part of the regular expression, i.e. the subexpression in parenthesis, is stored in a backreference. 
+
+With the aid of backreferences we can reuse parts of regular expressions. 
+
+These stored values can be both reused inside the expression itself and afterwards, when the regexpr will have been executed.
+
+Before we continue with our treatise about backreferences, we want to strew in a paragraph about match objects, which is important for our next examples with backreferences. 
+
+
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+A Closer Look at the Match Objects
+
+mo = re.search()
+
+mo.span()  : returns a tuple with the start and end position, i.e. the string index where the regular expression started matching in the string and ended matching. span()[0] is equal to 	
+				start() and span()[1] is equal to end()
+mo.start() :
+mo.end()   :
+
+group(n,m) :  returns a tuple with the matched substrings. group(n,m) is equal to (group(n), group(m)):
+
+re.search(r"<([a-z]+)>(.*)</\1>",i) : If there are more than one pair of parenthesis (round brackets) inside the expression, the backreferences are numbered \1, \2, \3, in the order of the 
+										pairs of parenthesis.
+
+
+So far we have just checked, if an expression matched or not. We used the fact the re.search() returns a match object if it matches and None otherwise.
+
+ We haven't been interested e.g. in what has been matched. The match object contains a lot of data about what has been matched, positions and so on. 
+
+A match object contains the methods group(), span(), start() and end(), as can be seen in the following application:
+>>> import re
+>>> mo = re.search("[0-9]+", "Customer number: 232454, Date: February 12, 2011")
+>>> mo.group()
+'232454'
+>>> mo.span()
+(17, 23)
+>>> mo.start()
+17
+>>> mo.end()
+23
+>>> mo.span()[0]
+17
+>>> mo.span()[1]
+23
+>>> 
+These methods are not difficult to understand. 
+
+span() returns a tuple with the start and end position, i.e. the string index where the regular expression started matching in the string and ended matching. 
+
+The methods start() and end() are in a way superfluous as the information is contained in span(), i.e. span()[0] is equal to start() and span()[1] is equal to end(). group(), if called without argument, returns the substring, which had been matched by the complete regular expression.
+
+ With the help of group() we are also capable of accessing the matched substring by grouping parentheses, to get the matched substring of the n-th group, we call group() with the argument n: group(n).
+
+We can also call group with more than integer argument, e.g. group(n,m). group(n,m) - provided there exists a subgoup n and m - returns a tuple with the matched substrings. group(n,m) is equal to (group(n), group(m)):
+
+
+>>> import re
+>>> mo = re.search("([0-9]+).*: (.*)", "Customer number: 232454, Date: February 12, 2011")
+>>> mo.group()
+'232454, Date: February 12, 2011'
+>>> mo.group(1)
+'232454'
+>>> mo.group(2)
+'February 12, 2011'
+>>> mo.group(1,2)
+('232454', 'February 12, 2011')
+>>> 
+
+
+
+A very intuitive example are XML or HTML tags. E.g. let's assume we have a file (called "tags.txt") with content like this:
+<composer>Wolfgang Amadeus Mozart</composer>
+<author>Samuel Beckett</author>
+<city>London</city>
+We want to rewrite this text automatically to
+composer: Wolfgang Amadeus Mozart
+author: Samuel Beckett
+city: London
+
+
+The following little Python script does the trick. 
+
+The core of this script is the regular expression. This regular expression works like this: 
+
+t tries to match a less than symbol "<". After this it is reading lower case letters until it reaches the greater than symbol. 
+
+Everything encountered within "<" and ">" has been stored in a backreference which can be accessed within the expression by writing \1. 
+
+Let's assume \1 contains the value "composer": When the expression has reached the first ">", it continues matching, as the original expression had been "<composer>(.*)</composer>":
+
+import re
+fh = open("tags.txt")
+for i in fh:
+     res = re.search(r"<([a-z]+)>(.*)</\1>",i)
+     print res.group(1) + ": " + res.group(2)
+
+If there are more than one pair of parenthesis (round brackets) inside the expression, the backreferences are numbered \1, \2, \3, in the order of the pairs of parenthesis. 
+
+
+
+
+Exercise: 
+The next Python example makes use of three backreferences. 
+
+We have an imaginary phone list of the Simpsons in a list. Not all entries contain a phone number, but if a phone number exists it is the first part of an entry. 
+
+Then follows separated by a blank a surname, which is followed by first names. 
+
+Surname and first name are separated by a comma. The task is to rewrite this example in the following way:
+
+
+Allison Neu 555-8396
+C. Montgomery Burns 
+Lionel Putz 555-5299
+Homer Jay Simpson 555-7334
+
+
+from 
+
+l = ["555-8396 Neu, Allison", 
+     "Burns, C. Montgomery", 
+     "555-5299 Putz, Lionel",
+     "555-7334 Simpson, Homer Jay"]
+
+
+
+Python script solving the rearrangement problem: 
+import re
+
+l = ["555-8396 Neu, Allison", 
+     "Burns, C. Montgomery", 
+     "555-5299 Putz, Lionel",
+     "555-7334 Simpson, Homer Jay"]
+
+for i in l:
+    res = re.search(r"([0-9-]*)\s*([A-Za-z]+),\s+(.*)", i)
+    print res.group(3) + " " + res.group(2) + " " + res.group(1)
+
+
+
+
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+Named Backreferences
+
+
+(?P<hours>\d\d) :  x.group('hours')
+
+
+
+In the previous paragraph we introduced "Capturing Groups" and "Backreferences". 
+
+More precisely, we could have called them "Numbered Capturing Groups" and "Numbered Backreferences". 
+
+Using capturing groups instead of "numbered" capturing groups allows you to assign descriptive names instead of automatic numbers to the groups. 
+
+In the following example, we demonstrate this approach by catching the hours, minutes and seconds from a UNIX date string.
+
+
+
+
+>>> import re
+>>> s = "Sun Oct 14 13:47:03 CEST 2012"
+>>> expr = r"\b(?P<hours>\d\d):(?P<minutes>\d\d):(?P<seconds>\d\d)\b"
+>>> x = re.search(expr,s)
+>>> x.group('hours')
+'13'
+>>> x.group('minutes')  //gives value
+'47'
+>>> x.start('minutes')   // gives index
+14
+>>> x.end('minutes')
+16
+>>> x.span('seconds')
+(17, 19)
+>>> 
+
+
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+
+Regular Expression Modifiers: Option Flags
+Regular expression literals may include an optional modifier to control various aspects of matching. The modifiers are specified as an optional flag. You can provide multiple modifiers using exclusive OR (|), as shown previously and may be represented by one of these −
+
+Modifier	Description
+re.I	Performs case-insensitive matching.
+re.L	Interprets words according to the current locale. This interpretation affects the alphabetic group (\w and \W), as well as word boundary behavior (\b and \B).
+re.M	Makes $ match the end of a line (not just the end of the string) and makes ^ match the start of any line (not just the start of the string).
+re.S	Makes a period (dot) match any character, including a newline.
+re.U	Interprets letters according to the Unicode character set. This flag affects the behavior of \w, \W, \b, \B.
+re.X	Permits "cuter" regular expression syntax. It ignores whitespace (except inside a set [] or when escaped by a backslash) and treats unescaped # as a comment marker.
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+
+Regular Expression Patterns
+Except for control characters, (+ ? . * ^ $ ( ) [ ] { } | \), all characters match themselves. You can escape a control character by preceding it with a backslash.
+
+Following table lists the regular expression syntax that is available in Python −
+
+Pattern	Description
+
+
+^					Matches beginning of line.
+
+$					Matches end of line.
+
+.					Matches any single character except newline. Using m option allows it to match newline as well.
+
+[...]				Matches any single character in brackets.
+
+[^...]				Matches any single character not in brackets
+
+re*					Matches 0 or more occurrences of preceding expression.
+
+re+					Matches 1 or more occurrence of preceding expression.
+
+re?					Matches 0 or 1 occurrence of preceding expression.
+
+re{ n}				Matches exactly n number of occurrences of preceding expression.
+
+re{ n,}				Matches n or more occurrences of preceding expression.
+
+re{ n, m}			Matches at least n and at most m occurrences of preceding expression.
+
+a| b				Matches either a or b.
+(re)				Groups regular expressions and remembers matched text.
+(?imx)				Temporarily toggles on i, m, or x options within a regular expression. If in parentheses, only that area is affected.
+
+(?-imx)				Temporarily toggles off i, m, or x options within a regular expression. If in parentheses, only that area is affected.
+
+(?: re)				Groups regular expressions without remembering matched text.
+
+(?imx: re)			Temporarily toggles on i, m, or x options within parentheses.
+
+(?-imx: re)			Temporarily toggles off i, m, or x options within parentheses.
+
+(?#...)				Comment.
+
+(?= re)				Specifies position using a pattern. Doesn't have a range.
+
+(?! re)				Specifies position using pattern negation. Doesn't have a range.
+
+(?> re)				Matches independent pattern without backtracking.
+
+\w					Matches word characters.
+
+\W					Matches nonword characters.
+
+\s					Matches whitespace. Equivalent to [\t\n\r\f].
+
+\S					Matches nonwhitespace.
+
+\d					Matches digits. Equivalent to [0-9].
+
+\D					Matches nondigits.
+
+\A					Matches beginning of string.
+
+\Z					Matches end of string. If a newline exists, it matches just before newline.
+
+\z					Matches end of string.
+
+\G					Matches point where last match finished.
+
+\b					Matches word boundaries when outside brackets. Matches backspace (0x08) when inside brackets.
+
+\B					Matches nonword boundaries.
+
+\n, \t, etc.		Matches newlines, carriage returns, tabs, etc.
+
+\1...\9				Matches nth grouped subexpression.
+
+\10					Matches nth grouped subexpression if it matched already. Otherwise refers to the octal representation of a character code.
+
+
+
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+
+
+
+
+
+
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+Literal characters
+Example	Description
+python	Match "python".
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+Character classes
+Example	Description
+[Pp]ython	Match "Python" or "python"
+rub[ye]	Match "ruby" or "rube"
+[aeiou]	Match any one lowercase vowel
+[0-9]	Match any digit; same as [0123456789]
+[a-z]	Match any lowercase ASCII letter
+[A-Z]	Match any uppercase ASCII letter
+[a-zA-Z0-9]	Match any of the above
+[^aeiou]	Match anything other than a lowercase vowel
+[^0-9]	Match anything other than a digit
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+
+
+
+Special Character Classes
+Example	Description
+.	Match any character except newline
+\d	Match a digit: [0-9]
+\D	Match a nondigit: [^0-9]
+\s	Match a whitespace character: [ \t\r\n\f]
+\S	Match nonwhitespace: [^ \t\r\n\f]
+\w	Match a single word character: [A-Za-z0-9_]
+\W	Match a nonword character: [^A-Za-z0-9_]
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+
+Nongreedy repetition
+
+This matches the smallest number of repetitions −
+
+Example	Description
+<.*>	Greedy repetition: matches "<python>perl>"
+<.*?>	Nongreedy: matches "<python>" in "<python>perl>"
+
+
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+Grouping with Parentheses
+Example	Description
+\D\d+	No group: + repeats \d
+(\D\d)+	Grouped: + repeats \D\d pair
+([Pp]ython(, )?)+	Match "Python", "Python, python, python", etc.
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+Repetition Cases
+Example	Description
+ruby?	Match "rub" or "ruby": the y is optional
+ruby*	Match "rub" plus 0 or more ys
+ruby+	Match "rub" plus 1 or more ys
+\d{3}	Match exactly 3 digits
+\d{3,}	Match 3 or more digits
+\d{3,5}	Match 3, 4, or 5 digits
+
+
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+Backreferences
+
+
+([Pp])ython&\1ails	Match python&pails or Python&Pails
+(['"])[^\1]*\1	Single or double-quoted string. \1 matches whatever the 1st group matched. \2 matches whatever the 2nd group matched, etc.
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+Alternatives
+
+Example	Description
+python|perl	Match "python" or "perl"
+rub(y|le))	Match "ruby" or "ruble"
+Python(!+|\?)	"Python" followed by one or more ! or one ?
+
+
+
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+Anchors
+This needs to specify match position.
+
+Example	Description
+^Python	Match "Python" at the start of a string or internal line
+Python$	Match "Python" at the end of a string or line
+\APython	Match "Python" at the start of a string
+Python\Z	Match "Python" at the end of a string
+\bPython\b	Match "Python" at a word boundary
+\brub\B	\B is nonword boundary: match "rub" in "rube" and "ruby" but not alone
+Python(?=!)	Match "Python", if followed by an exclamation point.
+Python(?!!)	Match "Python", if not followed by an exclamation point.
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+Special Syntax with Parentheses
+
+Example	Description
+R(?#comment)	Matches "R". All the rest is a comment
+R(?i)uby	Case-insensitive while matching "uby"
+R(?i:uby)	Same as above
+rub(?:y|le))	Group only without creating \1 backreference
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+
+
+***********************************************    **********************************************     ***********************************************************
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,288 @@
+
+
+Design a Synchronized Message broker queues. How will you handle various situations like one queue is down, automatic failover, active master selection, handling acked and unackedmessages.
+
+
+
+Rabbit MQ
+https://www.erlang-solutions.com/blog/take-control-of-your-rabbitmq-queues.html
+
+Queue Master Location Every queue in RabbitMQ has a home node. That node is called queue master. All queue operations go through the master first and then are replicated to mirrors. This is necessary to guarantee FIFO ordering of messages.
+
+Prior to introducing the queue master location mechanism, declaration of queues, by default, had been characterized by the queue master being located on the local node on which the declare operation was being executed on. This is somewhat very limiting, and has been the main reason behind the inefficient imbalance of system resources on a RabbitMQ cluster when the number of queues become significantly large.
+
+Upon introducing this mechanism, the node on which the queue master will be located is now first computed from a configurable strategy, prior to the queue being created.
+
+Configurable strategy is key here, as it leverages full control to RabbitMQ users to dictate the distribution of queue masters across their cluster. There are three means by which a queue master location strategy may be configured;
+
+Queue declare arguments: This is at AMQP level, where the queue master location strategy is defined as part of the queue’s declaration arguments
+Policy: Here the strategy is defined as a RabbitMQ policy.
+Configuration file: Location strategy is defined in the rabbitmq.config file.
+
+Currently, there are three queue master location strategies available;
+
+Min-Masters: Selects the master node as the one with the least running master queues. Configured as min-masters.
+
+Client-local: Like previous default node selection policy, this strategy selects the queue master node as the local node on which the queue is being declared. Configured as client-local.
+
+Random: Selects the queue master node based on random selection. Configured as random.
+
+So in a nutshell, this is the general theory behind controlling and dictating the location of a queue master’s node.
+
+For instance, if one of the slave nodes defined by the HA nodes policy becomes the queue master node computed by the location strategy. In such a scenario, the HA nodes policy would always take precedence over the queue master location strategy.
+
+With this knowledge at hand, the engineer in the situation mentioned above would simply enforce the use of the min-masters queue location strategy as part of the queue declaration arguments for all microservices connecting to the RabbitMQ cluster. Or even easier, he’d simply set the min-masters policy on the cluster nodes, using the match-all wildcard for the queue name match pattern. This would ensure that all newly created queues would be automatically distributed across the cluster until there’s a balance in the number of queue masters per node, and ultimately, a balance in the utilization of system resources across all three servers.
+
+
+http://www.rabbitmq.com/ha.html
+
+Different master selection strategies are already implemented in master.
+
+By default, queues within a RabbitMQ cluster are located on a single node (the node on which they were first declared). This is in contrast to exchanges and bindings, which can always be considered to be on all nodes.
+
+Queues can optionally be made mirrored across multiple nodes. Each mirrored queue consists of one master and one or more mirrors, with the oldest mirror being promoted to the new master if the old master disappears for any reason.
+
+Messages published to the queue are replicated to all mirrors.
+Consumers are connected to the master regardless of which node they connect to, with mirrors dropping messages that have been acknowledged at the master. Queue mirroring therefore enhances availability, but does not distribute load across nodes (all participating nodes each do all the work).
+
+This guide typically uses "master" to refer to the primary replica of a queue and "mirror" for secondary replicas.
+
+How Mirroring is Configured
+Mirroring parameters are configured using policies. A policy matches one or more queues by name (using a regular expression pattern) and contains a definition (a map of optional arguments) that are added to the total set of properties of the matching queues.
+
+
+There is a difference between a non-mirrored queue and a mirrored queue which does not have any mirrors - the former lacks the extra mirroring infrastructure and will likely provide higher throughput.
+
+
+"nodes" Policy and Migrating Masters
+For example, if a queue is on [A B] (with A the master), and you give it a nodes policy telling it to be on [C D], it will initially end up on [A C D]. As soon as the queue synchronises on its new mirrors [C D], the master on A will shut down.
+
+
+If the master fails, then one of the mirrors will be promoted to master as follows:
+1.The longest running mirror is promoted to master, the assumption being that it is most likely to be fully synchronised with the master. If there is no mirror that is synchronised with the master, messages that only existed on master will be lost.
+
+If you are consuming from a mirrored queue with noAck=true (i.e. the client is not sending message acknowledgements), then messages can be lost. This is no different from the norm of course: the broker considers a message acknowledged as soon as it has been sent to a noAck=true consumer. Should the client disconnect abruptly, the message may never be received. In the case of a mirrored queue, should the master die, messages that are in-flight on their way to noAck=true consumers may never be received by those clients, and will not be requeued by the new master.
+
+Publisher Confirms and Transactions
+So in the case of a transaction, a tx.commit-ok will only be returned to a client when the transaction has been applied across all mirrors of the queue. Equally, in the case of publisher confirms, a message will only be confirmed to the publisher when it has been accepted by all of the mirrors
+
+Flow Control
+RabbitMQ uses a credit-based algorithm to limit the rate of message publication. Publishers are permitted to publish when they receive credit from all mirrors of a queue. Credit in this context means permission to publish. Mirrors that fail to issue credit can cause publishers to stall. Publishers will remain blocked until all mirrors issue credit or until the remaining nodes consider the mirror to be disconnected from the cluster. Erlang detects such disconnections by periodically sending a tick to all nodes.
+
+Batch Synchronization
+Since RabbitMQ 3.6.0, masters perform synchronisation in batches. Batch can be configured via the ha-sync-batch-size queue argument. Earlier versions will will synchronise 1 message at a time by default. By synchronising messages in batches, the synchronisation process can be sped up considerably.
+
+To choose the right value for ha-sync-batch-size you need to consider:
+
+average message size
+network throughput between RabbitMQ nodes
+net_ticktime value
+For example, if you set ha-sync-batch-size to 50000 messages, and each message in the queue is 1KB, then each synchronisation message between nodes will be ~49MB. You need to make sure that your network between queue mirrors can accomodate this kind of traffic. If the network takes longer than net_ticktime to send one batch of messages, then nodes in the cluster could think they are in the presence of a network partition.
+
+
+Configuring Synchronisation
+ while a queue is being synchronised, all other queue operations will be blocked. Depending on multiple factors, a queue might be blocked by synchronisation for many minutes or hours, and in extreme cases even days.
+
+ha-sync-mode: manual - this is the default mode. A new queue mirror will not receive existing messages, it will only receive new messages. The new queue mirror will become an exact replica of the master over time, once consumers have drained messages that only exist on the master. If the master queue fails before all unsychronised messages are drained, those messages will be lost. You can fully synchronise a queue manually,
+
+ha-sync-mode: automatic - a queue will automatically synchronise when a new mirror joins. It is worth reiterating that queue synchronisation is a blocking operation. If queues are small, or you have a fast network between RabbitMQ nodes and the ha-sync-batch-size was optimised, this is a good choice.
+
+
+
+How to make RabbitMQ queues failover?
+High-availability aka "mirrored" queues are the gold standard for Rabbit HA.
+
+
+http://blog.flux7.com/blogs/tutorials/how-to-creating-highly-available-message-queues-using-rabbitmq
+
+Every day in the world of modern technology, high availability has become the key requirement of any layer in a technology.
+Message broker software has become a significant component of most stacks.
+ that implements the Advanced Message Queuing Protocol (AMQP).
+RabbitMQ server is written in the Erlang programming language.
+
+Clustering connects multiple nodes to form a single logical broker. Virtual hosts, exchanges, users and permissions are mirrored across all nodes in a cluster. A client connecting to any node can see all the queues in a cluster.
+
+Clustering enables high availability of queues and increases the throughput.
+
+A node can be a Disc node or RAM node. RAM node keeps the message state in memory with the exception of queue contents which can reside on a disk if the queue is persistent or too big to fit into memory.
+
+RAM nodes perform better than Disc nodes because they don’t have to write to a disk as much as disk nodes. But, it is always recommended to have disk nodes for persistent queues.
+
+
+Handling failover is complex and is a must-have for any so-called robust application.
+
+
+########### Work Queues
+https://www.rabbitmq.com/tutorials/tutorial-two-python.html
+
+In this one we'll create a Work Queue that will be used to distribute time-consuming tasks among multiple workers.
+
+The main idea behind Work Queues (aka: Task Queues) is to avoid doing a resource-intensive task immediately and having to wait for it to complete. Instead we schedule the task to be done later. We encapsulate a task as a message and send it to the queue. A worker process running in the background will pop the tasks and eventually execute the job. When you run many workers the tasks will be shared between them.
+
+This concept is especially useful in web applications where it's impossible to handle a complex task during a short HTTP request window.
+
+Round-robin dispatching
+One of the advantages of using a Task Queue is the ability to easily parallelise work. If we are building up a backlog of work, we can just add more workers and that way, scale easily.
+
+First, let's try to run two worker.py scripts at the same time. They will both get messages from the queue,
+
+In order to make sure a message is never lost, RabbitMQ supports message acknowledgments. An ack(nowledgement) is sent back by the consumer to tell RabbitMQ that a particular message had been received, processed and that RabbitMQ is free to delete it.
+
+If a consumer dies (its channel is closed, connection is closed, or TCP connection is lost) without sending an ack, RabbitMQ will understand that a message wasn't processed fully and will re-queue it. If there are other consumers online at the same time, it will then quickly redeliver it to another consumer. That way you can be sure that no message is lost, even if the workers occasionally die.
+
+There aren't any message timeouts; RabbitMQ will redeliver the message when the consumer dies. It's fine even if processing a message takes a very, very long time.
+
+
+Using this code we can be sure that even if you kill a worker using CTRL+C while it was processing a message, nothing will be lost. Soon after the worker dies all unacknowledged messages will be redelivered.
+
+Message durability
+We have learned how to make sure that even if the consumer dies, the task isn't lost. But our tasks will still be lost if RabbitMQ server stops.
+
+When RabbitMQ quits or crashes it will forget the queues and messages unless you tell it not to. Two things are required to make sure that messages aren't lost: we need to mark both the queue and messages as durable.
+
+First, we need to make sure that RabbitMQ will never lose our queue. In order to do so, we need to declare it as durable:
+
+Although this command is correct by itself, it won't work in our setup. That's because we've already defined a queue called hello which is not durable. RabbitMQ doesn't allow you to redefine an existing queue with different parameters and will return an error to any program that tries to do that. But there is a quick workaround - let's declare a queue with different name, for example task_queue:
+
+At that point we're sure that the task_queue queue won't be lost even if RabbitMQ restarts. Now we need to mark our messages as persistent - by supplying a delivery_mode property with a value 2.
+
+Note on message persistence
+Marking messages as persistent doesn't fully guarantee that a message won't be lost. Although it tells RabbitMQ to save the message to disk, there is still a short time window when RabbitMQ has accepted a message and hasn't saved it yet. Also, RabbitMQ doesn't do fsync(2) for every message -- it may be just saved to cache and not really written to the disk. The persistence guarantees aren't strong, but it's more than enough for our simple task queue. If you need a stronger guarantee then you can use publisher confirms.
+
+
+Fair dispatch
+in a situation with two workers, when all odd messages are heavy and even messages are light, one worker will be constantly busy and the other one will do hardly any work. Well, RabbitMQ doesn't know anything about that and will still dispatch messages evenly.
+
+This happens because RabbitMQ just dispatches a message when the message enters the queue. It doesn't look at the number of unacknowledged messages for a consumer. It just blindly dispatches every n-th message to the n-th consumer.
+
+In order to defeat that we can use the basic.qos method with the prefetch_count=1 setting. This tells RabbitMQ not to give more than one message to a worker at a time. Or, in other words, don't dispatch a new message to a worker until it has processed and acknowledged the previous one. Instead, it will dispatch it to the next worker that is not still busy.
+
+Note about queue size
+If all the workers are busy, your queue can fill up. You will want to keep an eye on that, and maybe add more workers, or use message TTL.
+
+Introduction
+RabbitMQ is a message broker: it accepts and forwards messages.
+You can think about it as a post office: when you put the mail that you want posting in a post box, you can be sure that Mr. Postman will eventually deliver the mail to your recipient. In this analogy, RabbitMQ is a post box, a post office and a postman.
+
+roducing means nothing more than sending. A program that sends messages is a producer :
+
+A queue is the name for a post box which lives inside RabbitMQ. Although messages flow through RabbitMQ and your applications, they can only be stored inside a queue. A queue is only bound by the host's memory & disk limits, it's essentially a large message buffer. Many producers can send messages that go to one queue, and many consumers can try to receive data from one queue.
+
+Consuming has a similar meaning to receiving. A consumer is a program that mostly waits to receive messages:
+
+Producer sends messages to the "hello" queue. The consumer receives messages from that queue.
+
+In RabbitMQ a message can never be sent directly to the queue, it always needs to go through an exchange.
+
+All we need to know now is how to use a default exchange identified by an empty string. This exchange is special ‒ it allows us to specify exactly to which queue the message should go. The queue name needs to be specified in the routing_key parameter:
+
+If this is your first time using RabbitMQ and you don't see the "Sent" message then you may be left scratching your head wondering what could be wrong. Maybe the broker was started without enough free disk space (by default it needs at least 200 MB free) and is therefore refusing to accept messages. Check the broker logfile to confirm and reduce the limit if necessary.
+
+Publish/Subscribe
+Essentially, published log messages are going to be broadcast to all the receivers.
+
+The core idea in the messaging model in RabbitMQ is that the producer never sends any messages directly to a queue. Actually, quite often the producer doesn't even know if a message will be delivered to any queue at all.
+
+Instead, the producer can only send messages to an exchange. An exchange is a very simple thing. On one side it receives messages from producers and the other side it pushes them to queues. The exchange must know exactly what to do with a message it receives. Should it be appended to a particular queue? Should it be appended to many queues? Or should it get discarded. The rules for that are defined by the exchange type.
+
+
+There are a few exchange types available: direct, topic, headers and fanout. We'll focus on the last one -- the fanout. Let's create an exchange of that type, and call it logs:
+
+The fanout exchange is very simple. As you can probably guess from the name, it just broadcasts all the messages it receives to all the queues it knows. And that's exactly what we need for our logger.
+
+The default exchange
+In previous parts of the tutorial we knew nothing about exchanges, but still were able to send messages to queues. That was possible because we were using a default exchange, which we identify by the empty string ("").
+
+
+The exchange parameter is the name of the exchange. The empty string denotes the default or nameless exchange: messages are routed to the queue with the name specified by routing_key, if it exists.
+
+Giving a queue a name is important when you want to share the queue between producers and consumers.
+
+Bindings
+
+A binding is a relationship between an exchange and a queue. This can be simply read as: the queue is interested in messages from this exchange.
+
+We've already created a fanout exchange and a queue. Now we need to tell the exchange to send messages to our queue. That relationship between exchange and a queue is called a binding.
+
+The producer program, which emits log messages, doesn't look much different from the previous tutorial. The most important change is that we now want to publish messages to our logs exchange instead of the nameless one. We need to supply a routing_key when sending, but its value is ignored for fanout exchanges.
+
+As you see, after establishing the connection we declared the exchange. This step is necessary as publishing to a non-existing exchange is forbidden.
+
+The messages will be lost if no queue is bound to the exchange yet, but that's okay for us; if no consumer is listening yet we can safely discard the message.
+
+Routing
+we're going to add a feature to it - we're going to make it possible to subscribe only to a subset of the messages. For example, we will be able to direct only critical error messages to the log file (to save disk space), while still being able to print all of the log messages on the console.
+
+Bindings can take an extra routing_key parameter. To avoid the confusion with a basic_publish parameter we're going to call it a binding key.
+
+The meaning of a binding key depends on the exchange type. The fanout exchanges, which we used previously, simply ignored its value.
+
+Direct exchange
+The routing algorithm behind a direct exchange is simple - a message goes to the queues whose binding key exactly matches the routing key of the message.
+
+Multiple bindings
+It is perfectly legal to bind multiple queues with the same binding key. In our example we could add a binding between X and Q1 with binding key black. In that case, the direct exchange will behave like fanout and will broadcast the message to all the matching queues. A message with routing key black will be delivered to both Q1 and Q2.
+
+
+Topics
+In our logging system we might want to subscribe to not only logs based on severity, but also based on the source which emitted the log. You might know this concept from the syslog unix tool, which routes logs based on both severity (info/warn/crit...) and facility (auth/cron/kern...).
+
+That would give us a lot of flexibility - we may want to listen to just critical errors coming from 'cron' but also all logs from 'kern'.
+
+
+Topic exchange
+The binding key must also be in the same form. The logic behind the topic exchange is similar to a direct one - a message sent with a particular routing key will be delivered to all the queues that are bound with a matching binding key. However there are two important special cases for binding keys:
+
+* (star) can substitute for exactly one word.
+# (hash) can substitute for zero or more words.
+
+
+n this example, we're going to send messages which all describe animals. The messages will be sent with a routing key that consists of three words (two dots). The first word in the routing key will describe a celerity, second a colour and third a species: "<celerity>.<colour>.<species>".
+
+We created three bindings: Q1 is bound with binding key "*.orange.*" and Q2 with "*.*.rabbit" and "lazy.#".
+
+These bindings can be summarised as:
+
+Q1 is interested in all the orange animals.
+Q2 wants to hear everything about rabbits, and everything about lazy animals.
+A message with a routing key set to "quick.orange.rabbit" will be delivered to both queues. Message "lazy.orange.elephant" also will go to both of them. On the other hand "quick.orange.fox" will only go to the first queue, and "lazy.brown.fox" only to the second. "lazy.pink.rabbit" will be delivered to the second queue only once, even though it matches two bindings. "quick.brown.fox" doesn't match any binding so it will be discarded.
+
+
+What happens if we break our contract and send a message with one or four words, like "orange" or "quick.orange.male.rabbit"? Well, these messages won't match any bindings and will be lost.
+
+On the other hand "lazy.orange.male.rabbit", even though it has four words, will match the last binding and will be delivered to the second queue.
+
+Topic exchange is powerful and can behave like other exchanges.
+
+When a queue is bound with "#" (hash) binding key - it will receive all the messages, regardless of the routing key - like in fanout exchange.
+
+When special characters "*" (star) and "#" (hash) aren't used in bindings, the topic exchange will behave just like a direct one.
+
+
+Remote procedure call (RPC)
+how to use Work Queues to distribute time-consuming tasks among multiple workers.
+
+But what if we need to run a function on a remote computer and wait for the result? Well, that's a different story. This pattern is commonly known as Remote Procedure Call or RPC.
+To illustrate how an RPC service could be used we're going to create a simple client class. It's going to expose a method named call which sends an RPC request and blocks until the answer is received:
+
+Callback queue
+In general doing RPC over RabbitMQ is easy. A client sends a request message and a server replies with a response message. In order to receive a response the client needs to send a 'callback' queue address with the request.
+
+
+Correlation id
+correlation_id: Useful to correlate RPC responses with requests.
+
+In the method presented above we suggest creating a callback queue for every RPC request. That's pretty inefficient, but fortunately there is a better way - let's create a single callback queue per client.
+
+That raises a new issue, having received a response in that queue it's not clear to which request the response belongs. That's when the correlation_id property is used. We're going to set it to a unique value for every request. Later, when we receive a message in the callback queue we'll look at this property, and based on that we'll be able to match a response with a request. If we see an unknown correlation_id value, we may safely discard the message - it doesn't belong to our requests.
+
+You may ask, why should we ignore unknown messages in the callback queue, rather than failing with an error? It's due to a possibility of a race condition on the server side. Although unlikely, it is possible that the RPC server will die just after sending us the answer, but before sending an acknowledgment message for the request. If that happens, the restarted RPC server will process the request again. That's why on the client we must handle the duplicate responses gracefully, and the RPC should ideally be idempotent.
+
+Our RPC will work like this:
+
+When the Client starts up, it creates an anonymous exclusive callback queue.
+For an RPC request, the Client sends a message with two properties: reply_to, which is set to the callback queue and correlation_id, which is set to a unique value for every request.
+The request is sent to an rpc_queue queue.
+The RPC worker (aka: server) is waiting for requests on that queue. When a request appears, it does the job and sends a message with the result back to the Client, using the queue from the  reply_to field.
+The client waits for data on the callback queue. When a message appears, it checks the correlation_id property. If it matches the value from the request it returns the response to the application.
+

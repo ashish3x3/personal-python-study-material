@@ -1,0 +1,4 @@
+1.downlaod pyuthon 2.7 frpm https://www.python.org/downloads/windows/
+2. install
+3.put C:\Python27 in sys env variable
+4.done
